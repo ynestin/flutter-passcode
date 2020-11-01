@@ -35,6 +35,7 @@ class Keyboard extends StatefulWidget {
   final KeyboardUIConfig keyboardUIConfig;
   final KeyboardTapCallback onKeyboardTap;
   final Widget backspaceButton;
+  final Widget biometricButton;
 
   //should have a proper order [1...9, 0]
   final List<String> digits;
@@ -45,6 +46,7 @@ class Keyboard extends StatefulWidget {
     @required this.onKeyboardTap,
     this.digits,
     this.backspaceButton,
+    this.biometricButton,
   }) : super(key: key);
 
   @override
@@ -96,7 +98,7 @@ class _KeyboardState extends State<Keyboard> {
           ...List.generate(9, (index) {
             return _buildKeyboardDigit(keyboardItems[index], index);
           }),
-          Container(),
+          widget.biometricButton,
           _buildKeyboardDigit(keyboardItems[9], 9),
           widget.backspaceButton
         ],

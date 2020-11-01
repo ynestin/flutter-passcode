@@ -26,6 +26,7 @@ class PasscodeScreen extends StatefulWidget {
   final Widget cancelButton;
   final Widget deleteButton;
   final Widget backspaceButton;
+  final Widget biometricButton;
   final Stream<bool> shouldTriggerVerification;
   final Widget bottomWidget;
   final CircleUIConfig circleUIConfig;
@@ -40,6 +41,7 @@ class PasscodeScreen extends StatefulWidget {
     this.cancelButton,
     this.deleteButton,
     this.backspaceButton,
+    this.biometricButton,
     @required this.shouldTriggerVerification,
     this.isValidCallback,
     CircleUIConfig circleUIConfig,
@@ -190,6 +192,7 @@ class _PasscodeScreenState extends State<PasscodeScreen> with SingleTickerProvid
           keyboardUIConfig: widget.keyboardUIConfig,
           digits: widget.digits,
           backspaceButton: widget.backspaceButton != null ? _buildBackspaceButton() : Container(),
+          biometricButton: widget.biometricButton != null ? _buildBiometricButton() : Container(),
         ),
       );
 
@@ -291,5 +294,9 @@ class _PasscodeScreenState extends State<PasscodeScreen> with SingleTickerProvid
         ),
       ),
     );
+  }
+
+  Widget _buildBiometricButton() {
+    return widget.biometricButton;
   }
 }
