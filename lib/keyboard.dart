@@ -34,6 +34,7 @@ class KeyboardUIConfig {
 class Keyboard extends StatefulWidget {
   final KeyboardUIConfig keyboardUIConfig;
   final KeyboardTapCallback onKeyboardTap;
+  final Widget backspaceButton;
 
   //should have a proper order [1...9, 0]
   final List<String> digits;
@@ -43,6 +44,7 @@ class Keyboard extends StatefulWidget {
     @required this.keyboardUIConfig,
     @required this.onKeyboardTap,
     this.digits,
+    this.backspaceButton,
   }) : super(key: key);
 
   @override
@@ -90,9 +92,14 @@ class _KeyboardState extends State<Keyboard> {
       margin: EdgeInsets.only(top: 16),
       child: AlignedGrid(
         keyboardSize: keyboardSize,
-        children: List.generate(10, (index) {
-          return _buildKeyboardDigit(keyboardItems[index], index);
-        }),
+        children: [
+          ...List.generate(9, (index) {
+            return _buildKeyboardDigit(keyboardItems[index], index);
+          }),
+          Container(),
+          _buildKeyboardDigit(keyboardItems[9], 9),
+          widget.backspaceButton
+        ],
       ),
     );
   }

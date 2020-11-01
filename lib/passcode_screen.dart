@@ -25,6 +25,7 @@ class PasscodeScreen extends StatefulWidget {
   // Cancel button and delete button will be switched based on the screen state
   final Widget cancelButton;
   final Widget deleteButton;
+  final Widget backspaceButton;
   final Stream<bool> shouldTriggerVerification;
   final Widget bottomWidget;
   final CircleUIConfig circleUIConfig;
@@ -36,8 +37,9 @@ class PasscodeScreen extends StatefulWidget {
     @required this.title,
     this.passwordDigits = 6,
     @required this.passwordEnteredCallback,
-    @required this.cancelButton,
-    @required this.deleteButton,
+    this.cancelButton,
+    this.deleteButton,
+    this.backspaceButton,
     @required this.shouldTriggerVerification,
     this.isValidCallback,
     CircleUIConfig circleUIConfig,
@@ -120,7 +122,7 @@ class _PasscodeScreenState extends State<PasscodeScreen> with SingleTickerProvid
               ),
             ),
           ),
-          Positioned(
+          if (widget.cancelButton != null && widget.deleteButton != null) Positioned(
             child: Align(
               alignment: Alignment.bottomRight,
               child: _buildDeleteButton(),
@@ -173,7 +175,7 @@ class _PasscodeScreenState extends State<PasscodeScreen> with SingleTickerProvid
               ),
             ),
           ),
-          Positioned(
+          if (widget.cancelButton != null && widget.deleteButton != null) Positioned(
             child: Align(
               alignment: Alignment.bottomRight,
               child: _buildDeleteButton(),
@@ -187,6 +189,7 @@ class _PasscodeScreenState extends State<PasscodeScreen> with SingleTickerProvid
           onKeyboardTap: _onKeyboardButtonPressed,
           keyboardUIConfig: widget.keyboardUIConfig,
           digits: widget.digits,
+          backspaceButton: widget.backspaceButton != null ? _buildBackspaceButton() : Container(),
         ),
       );
 
@@ -209,15 +212,17 @@ class _PasscodeScreenState extends State<PasscodeScreen> with SingleTickerProvid
     return list;
   }
 
-  _onDeleteCancelButtonPressed() {
+  _onDeleteButtonPressed() {
     if (enteredPasscode.length > 0) {
       setState(() {
         enteredPasscode = enteredPasscode.substring(0, enteredPasscode.length - 1);
       });
-    } else {
-      if (widget.cancelCallback != null) {
-        widget.cancelCallback();
-      }
+    }
+  }
+
+  _onCancelButtonPressed() {
+    if (widget.cancelCallback != null) {
+      widget.cancelCallback();
     }
   }
 
@@ -268,10 +273,21 @@ class _PasscodeScreenState extends State<PasscodeScreen> with SingleTickerProvid
   Widget _buildDeleteButton() {
     return Container(
       child: CupertinoButton(
-        onPressed: _onDeleteCancelButtonPressed,
+        onPressed: enteredPasscode.length == 0 ? _onCancelButtonPressed : _onDeleteButtonPressed,
         child: Container(
           margin: widget.keyboardUIConfig.digitInnerMargin,
           child: enteredPasscode.length == 0 ? widget.cancelButton : widget.deleteButton,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBackspaceButton() {
+    return Container(
+      child: CupertinoButton(
+        onPressed: _onDeleteButtonPressed,
+        child: Container(
+          child: widget.backspaceButton
         ),
       ),
     );
