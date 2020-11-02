@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:passcode_screen/circle.dart';
 import 'package:passcode_screen/keyboard.dart';
 import 'package:passcode_screen/shake_curve.dart';
+import 'package:passcode_screen/animation.dart';
 
 typedef PasswordEnteredCallback = void Function(String text);
 typedef IsValidCallback = void Function();
@@ -31,6 +32,7 @@ class PasscodeScreen extends StatefulWidget {
   final Widget bottomWidget;
   final CircleUIConfig circleUIConfig;
   final KeyboardUIConfig keyboardUIConfig;
+  final AnimationUIConfig animationUIConfig;
   final List<String> digits;
 
   PasscodeScreen({
@@ -46,12 +48,14 @@ class PasscodeScreen extends StatefulWidget {
     this.isValidCallback,
     CircleUIConfig circleUIConfig,
     KeyboardUIConfig keyboardUIConfig,
+    AnimationUIConfig animationUIConfig,
     this.bottomWidget,
     this.backgroundColor,
     this.cancelCallback,
     this.digits,
-  })  : circleUIConfig = circleUIConfig == null ? const CircleUIConfig() : circleUIConfig,
-        keyboardUIConfig = keyboardUIConfig == null ? const KeyboardUIConfig() : keyboardUIConfig,
+  })  : circleUIConfig = circleUIConfig ?? const CircleUIConfig(),
+        keyboardUIConfig = keyboardUIConfig ?? const KeyboardUIConfig(),
+        animationUIConfig = animationUIConfig ?? const AnimationUIConfig(),
         super(key: key);
 
   @override
@@ -62,15 +66,19 @@ class _PasscodeScreenState extends State<PasscodeScreen> with SingleTickerProvid
   StreamSubscription<bool> streamSubscription;
   String enteredPasscode = '';
   AnimationController controller;
-  Animation<double> animation;
+  Animation<dynamic> animation;
 
   @override
   initState() {
     super.initState();
     streamSubscription = widget.shouldTriggerVerification.listen((isValid) => _showValidation(isValid));
-    controller = AnimationController(duration: const Duration(milliseconds: 500), vsync: this);
-    final Animation curve = CurvedAnimation(parent: controller, curve: ShakeCurve());
-    animation = Tween(begin: 0.0, end: 10.0).animate(curve)
+    _initInvalidPasscodeAnimation();
+  }
+
+  _initInvalidPasscodeAnimation() {
+    controller = AnimationController(duration: widget.animationUIConfig.duration, vsync: this);
+    final Animation curve = CurvedAnimation(parent: controller, curve: widget.animationUIConfig.curve ?? ShakeCurve());
+    animation = (widget.animationUIConfig.animation ?? Tween(begin: 0.0, end: 10.0)).animate(curve)
       ..addStatusListener((status) {
         if (status == AnimationStatus.completed) {
           setState(() {
