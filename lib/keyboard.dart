@@ -9,6 +9,7 @@ class KeyboardUIConfig {
   final TextStyle digitTextStyle;
   final TextStyle deleteButtonTextStyle;
   final Color primaryColor;
+  final Color digitColorOnFill;
   final Color digitFillColor;
   final Color fillColor;
   final bool fillOnTap;
@@ -23,6 +24,7 @@ class KeyboardUIConfig {
     this.keyboardPadding = const EdgeInsets.symmetric(horizontal: 20),
     this.digitInnerMargin = const EdgeInsets.all(24),
     this.primaryColor = Colors.white,
+    this.digitColorOnFill,
     this.digitFillColor = Colors.transparent,
     this.fillColor,
     this.fillOnTap = false,
@@ -151,7 +153,11 @@ class _KeyboardState extends State<Keyboard> {
               child: Center(
                 child: Text(
                   text,
-                  style: widget.keyboardUIConfig.digitTextStyle,
+                  style: widget.keyboardUIConfig.digitTextStyle.copyWith(
+                    color: _keyboardItemsFilledState[index]
+                      ? widget.keyboardUIConfig.digitColorOnFill ?? widget.keyboardUIConfig.primaryColor
+                      : widget.keyboardUIConfig.digitTextStyle.color
+                  ),
                   semanticsLabel: text,
                 ),
               ),
