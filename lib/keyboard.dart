@@ -9,27 +9,36 @@ class KeyboardUIConfig {
   final TextStyle digitTextStyle;
   final TextStyle deleteButtonTextStyle;
   final Color primaryColor;
+  final Color digitColorOnFill;
   final Color digitFillColor;
+  final Color fillColor;
+  final bool fillOnTap;
   final EdgeInsetsGeometry keyboardRowMargin;
   final EdgeInsetsGeometry digitInnerMargin;
-  //Size for the keyboard can be define and provided from the app. If it will not be provided the size will be adjusted to a screen size.
-  final Size keyboardSize;
+  final EdgeInsetsGeometry keyboardPadding;
+  final Size keyboardItemSize;
 
   const KeyboardUIConfig({
     this.digitBorderWidth = 1,
     this.keyboardRowMargin = const EdgeInsets.only(top: 15, left: 4, right: 4),
+    this.keyboardPadding = const EdgeInsets.symmetric(horizontal: 20),
     this.digitInnerMargin = const EdgeInsets.all(24),
     this.primaryColor = Colors.white,
+    this.digitColorOnFill,
     this.digitFillColor = Colors.transparent,
+    this.fillColor,
+    this.fillOnTap = false,
     this.digitTextStyle = const TextStyle(fontSize: 30, color: Colors.white),
     this.deleteButtonTextStyle = const TextStyle(fontSize: 16, color: Colors.white),
-    this.keyboardSize,
+    this.keyboardItemSize = const Size(75, 75),
   });
 }
 
-class Keyboard extends StatelessWidget {
+class Keyboard extends StatefulWidget {
   final KeyboardUIConfig keyboardUIConfig;
   final KeyboardTapCallback onKeyboardTap;
+  final Widget backspaceButton;
+  final Widget biometricButton;
 
   //should have a proper order [1...9, 0]
   final List<String> digits;
@@ -39,95 +48,132 @@ class Keyboard extends StatelessWidget {
     @required this.keyboardUIConfig,
     @required this.onKeyboardTap,
     this.digits,
+    this.backspaceButton,
+    this.biometricButton,
   }) : super(key: key);
+
+  @override
+  _KeyboardState createState() => _KeyboardState();
+}
+
+class _KeyboardState extends State<Keyboard> {
+  List<bool> _keyboardItemsFilledState = List.filled(10, false);
+
+  Color get _keyboardHighlightColor {
+    if (widget.keyboardUIConfig.fillOnTap) {
+      return widget.keyboardUIConfig.fillColor ?? widget.keyboardUIConfig.primaryColor;
+    }
+
+    return null;
+  }
+
+  Color get _keyboardSplashColor {
+    if (widget.keyboardUIConfig.fillOnTap) {
+      return Colors.transparent;
+    }
+
+    return (widget.keyboardUIConfig.fillColor ?? widget.keyboardUIConfig.primaryColor).withOpacity(0.4);
+  }
 
   @override
   Widget build(BuildContext context) => _buildKeyboard(context);
 
   Widget _buildKeyboard(BuildContext context) {
     List<String> keyboardItems = List.filled(10, '0');
-    if (digits == null || digits.isEmpty) {
+    if (widget.digits == null || widget.digits.isEmpty) {
       keyboardItems = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
     } else {
-      keyboardItems = digits;
+      keyboardItems = widget.digits;
     }
-    final screenSize = MediaQuery.of(context).size;
-    final keyboardHeight = screenSize.height > screenSize.width ? screenSize.height / 2 : screenSize.height - 80;
-    final keyboardWidth = keyboardHeight * 3 / 4;
-    final keyboardSize = this.keyboardUIConfig.keyboardSize != null
-        ? this.keyboardUIConfig.keyboardSize
-        : Size(keyboardWidth, keyboardHeight);
+    int rowDivider = -3;
     return Container(
-      width: keyboardSize.width,
-      height: keyboardSize.height,
+      padding: widget.keyboardUIConfig.keyboardPadding,
       margin: EdgeInsets.only(top: 16),
-      child: AlignedGrid(
-        keyboardSize: keyboardSize,
-        children: List.generate(10, (index) {
-          return _buildKeyboardDigit(keyboardItems[index]);
-        }),
-      ),
+      child: Column(
+        children: [
+          ...List.generate(3, (_) {
+            rowDivider += 3;
+            return _generateKeyboardRow([
+              ...List.generate(3, (index) {
+                final int rowItemIndex = index + rowDivider;
+                return _buildKeyboardDigit(keyboardItems[rowItemIndex], rowItemIndex);
+              })
+            ]);
+          }),
+          _generateKeyboardRow([
+            Container(
+              width: widget.keyboardUIConfig.keyboardItemSize.width,
+              height: widget.keyboardUIConfig.keyboardItemSize.height,
+              child: widget.biometricButton,
+            ),
+            _buildKeyboardDigit(keyboardItems[9], 9),
+            Container(
+              width: widget.keyboardUIConfig.keyboardItemSize.width,
+              height: widget.keyboardUIConfig.keyboardItemSize.height,
+              child: widget.backspaceButton,
+            ),
+          ])
+        ],
+      )
     );
   }
 
-  Widget _buildKeyboardDigit(String text) {
+  Widget _generateKeyboardRow(List<Widget> children) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        ...children
+      ],
+    );
+  }
+
+  Widget _buildKeyboardDigit(String text, int index) {
     return Container(
+      width: widget.keyboardUIConfig.keyboardItemSize.width,
+      height: widget.keyboardUIConfig.keyboardItemSize.height,
       margin: EdgeInsets.all(4),
       child: ClipOval(
         child: Material(
-          color: keyboardUIConfig.digitFillColor,
+          color: widget.keyboardUIConfig.digitFillColor,
           child: InkWell(
-            splashColor: keyboardUIConfig.primaryColor.withOpacity(0.4),
+            highlightColor: _keyboardHighlightColor,
+            splashColor: _keyboardSplashColor,
             onTap: () {
-              onKeyboardTap(text);
+              setState(() {
+                _keyboardItemsFilledState[index] = false;
+              });
+              widget.onKeyboardTap(text);
+            },
+            onTapDown: (event) {
+              setState(() {
+                _keyboardItemsFilledState[index] = true;
+              });
             },
             child: Container(
               child: Center(
                 child: Text(
                   text,
-                  style: keyboardUIConfig.digitTextStyle,
+                  style: widget.keyboardUIConfig.digitTextStyle.copyWith(
+                    color: _keyboardItemsFilledState[index]
+                      ? widget.keyboardUIConfig.digitColorOnFill ?? widget.keyboardUIConfig.primaryColor
+                      : widget.keyboardUIConfig.digitTextStyle.color
+                  ),
                   semanticsLabel: text,
                 ),
               ),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: keyboardUIConfig.primaryColor, width: keyboardUIConfig.digitBorderWidth),
+                border: Border.all(
+                  color: widget.keyboardUIConfig.fillOnTap && _keyboardItemsFilledState[index]
+                      ? Colors.transparent
+                      : widget.keyboardUIConfig.primaryColor,
+                  width: widget.keyboardUIConfig.digitBorderWidth
+                ),
               ),
             ),
           ),
         ),
       ),
-    );
-  }
-}
-
-class AlignedGrid extends StatelessWidget {
-  final double runSpacing = 4;
-  final double spacing = 4;
-  final int listSize;
-  final columns = 3;
-  final List<Widget> children;
-  final Size keyboardSize;
-
-  const AlignedGrid({Key key, @required this.children, @required this.keyboardSize})
-      : listSize = children.length,
-        super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    final primarySize = keyboardSize.width > keyboardSize.height ? keyboardSize.height : keyboardSize.width;
-    final itemSize = (primarySize - runSpacing * (columns - 1)) / columns;
-    return Wrap(
-      runSpacing: runSpacing,
-      spacing: spacing,
-      alignment: WrapAlignment.center,
-      children: children
-          .map((item) => Container(
-                width: itemSize,
-                height: itemSize,
-                child: item,
-              ))
-          .toList(growable: false),
     );
   }
 }

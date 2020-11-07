@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:passcode_screen/circle.dart';
 import 'package:passcode_screen/keyboard.dart';
 import 'package:passcode_screen/shake_curve.dart';
+import 'package:passcode_screen/animation.dart';
 
 typedef PasswordEnteredCallback = void Function(String text);
 typedef IsValidCallback = void Function();
@@ -25,10 +26,13 @@ class PasscodeScreen extends StatefulWidget {
   // Cancel button and delete button will be switched based on the screen state
   final Widget cancelButton;
   final Widget deleteButton;
+  final Widget backspaceButton;
+  final Widget biometricButton;
   final Stream<bool> shouldTriggerVerification;
   final Widget bottomWidget;
   final CircleUIConfig circleUIConfig;
   final KeyboardUIConfig keyboardUIConfig;
+  final AnimationUIConfig animationUIConfig;
   final List<String> digits;
 
   PasscodeScreen({
@@ -36,18 +40,22 @@ class PasscodeScreen extends StatefulWidget {
     @required this.title,
     this.passwordDigits = 6,
     @required this.passwordEnteredCallback,
-    @required this.cancelButton,
-    @required this.deleteButton,
+    this.cancelButton,
+    this.deleteButton,
+    this.backspaceButton,
+    this.biometricButton,
     @required this.shouldTriggerVerification,
     this.isValidCallback,
     CircleUIConfig circleUIConfig,
     KeyboardUIConfig keyboardUIConfig,
+    AnimationUIConfig animationUIConfig,
     this.bottomWidget,
     this.backgroundColor,
     this.cancelCallback,
     this.digits,
-  })  : circleUIConfig = circleUIConfig == null ? const CircleUIConfig() : circleUIConfig,
-        keyboardUIConfig = keyboardUIConfig == null ? const KeyboardUIConfig() : keyboardUIConfig,
+  })  : circleUIConfig = circleUIConfig ?? const CircleUIConfig(),
+        keyboardUIConfig = keyboardUIConfig ?? const KeyboardUIConfig(),
+        animationUIConfig = animationUIConfig ?? const AnimationUIConfig(),
         super(key: key);
 
   @override
@@ -58,15 +66,19 @@ class _PasscodeScreenState extends State<PasscodeScreen> with SingleTickerProvid
   StreamSubscription<bool> streamSubscription;
   String enteredPasscode = '';
   AnimationController controller;
-  Animation<double> animation;
+  Animation<dynamic> animation;
 
   @override
   initState() {
     super.initState();
     streamSubscription = widget.shouldTriggerVerification.listen((isValid) => _showValidation(isValid));
-    controller = AnimationController(duration: const Duration(milliseconds: 500), vsync: this);
-    final Animation curve = CurvedAnimation(parent: controller, curve: ShakeCurve());
-    animation = Tween(begin: 0.0, end: 10.0).animate(curve)
+    _initInvalidPasscodeAnimation();
+  }
+
+  _initInvalidPasscodeAnimation() {
+    controller = AnimationController(duration: widget.animationUIConfig.duration, vsync: this);
+    final Animation curve = CurvedAnimation(parent: controller, curve: widget.animationUIConfig.curve ?? ShakeCurve());
+    animation = (widget.animationUIConfig.animation ?? Tween(begin: 0.0, end: 10.0)).animate(curve)
       ..addStatusListener((status) {
         if (status == AnimationStatus.completed) {
           setState(() {
@@ -120,7 +132,7 @@ class _PasscodeScreenState extends State<PasscodeScreen> with SingleTickerProvid
               ),
             ),
           ),
-          Positioned(
+          if (widget.cancelButton != null && widget.deleteButton != null) Positioned(
             child: Align(
               alignment: Alignment.bottomRight,
               child: _buildDeleteButton(),
@@ -173,7 +185,7 @@ class _PasscodeScreenState extends State<PasscodeScreen> with SingleTickerProvid
               ),
             ),
           ),
-          Positioned(
+          if (widget.cancelButton != null && widget.deleteButton != null) Positioned(
             child: Align(
               alignment: Alignment.bottomRight,
               child: _buildDeleteButton(),
@@ -187,6 +199,8 @@ class _PasscodeScreenState extends State<PasscodeScreen> with SingleTickerProvid
           onKeyboardTap: _onKeyboardButtonPressed,
           keyboardUIConfig: widget.keyboardUIConfig,
           digits: widget.digits,
+          backspaceButton: widget.backspaceButton != null ? _buildBackspaceButton() : Container(),
+          biometricButton: widget.biometricButton != null ? _buildBiometricButton() : Container(),
         ),
       );
 
@@ -209,15 +223,17 @@ class _PasscodeScreenState extends State<PasscodeScreen> with SingleTickerProvid
     return list;
   }
 
-  _onDeleteCancelButtonPressed() {
+  _onDeleteButtonPressed() {
     if (enteredPasscode.length > 0) {
       setState(() {
         enteredPasscode = enteredPasscode.substring(0, enteredPasscode.length - 1);
       });
-    } else {
-      if (widget.cancelCallback != null) {
-        widget.cancelCallback();
-      }
+    }
+  }
+
+  _onCancelButtonPressed() {
+    if (widget.cancelCallback != null) {
+      widget.cancelCallback();
     }
   }
 
@@ -268,12 +284,27 @@ class _PasscodeScreenState extends State<PasscodeScreen> with SingleTickerProvid
   Widget _buildDeleteButton() {
     return Container(
       child: CupertinoButton(
-        onPressed: _onDeleteCancelButtonPressed,
+        onPressed: enteredPasscode.length == 0 ? _onCancelButtonPressed : _onDeleteButtonPressed,
         child: Container(
           margin: widget.keyboardUIConfig.digitInnerMargin,
           child: enteredPasscode.length == 0 ? widget.cancelButton : widget.deleteButton,
         ),
       ),
     );
+  }
+
+  Widget _buildBackspaceButton() {
+    return Container(
+      child: CupertinoButton(
+        onPressed: _onDeleteButtonPressed,
+        child: Container(
+          child: widget.backspaceButton
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBiometricButton() {
+    return widget.biometricButton;
   }
 }
