@@ -149,6 +149,11 @@ class _KeyboardState extends State<Keyboard> {
                 _keyboardItemsFilledState[index] = true;
               });
             },
+            onTapCancel: () {
+              setState(() {
+                _keyboardItemsFilledState[index] = false;
+              });
+            },
             child: Container(
               child: Center(
                 child: Text(
