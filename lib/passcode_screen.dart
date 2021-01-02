@@ -4,6 +4,7 @@ import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:passcode_screen/circle.dart';
 import 'package:passcode_screen/keyboard.dart';
 import 'package:passcode_screen/shake_curve.dart';
@@ -18,6 +19,7 @@ class PasscodeScreen extends StatefulWidget {
   final int passwordDigits;
   final Color backgroundColor;
   final PasswordEnteredCallback passwordEnteredCallback;
+  final bool tapFeedbackEnabled;
 
   //isValidCallback will be invoked after passcode screen will pop.
   final IsValidCallback isValidCallback;
@@ -40,6 +42,7 @@ class PasscodeScreen extends StatefulWidget {
     @required this.title,
     this.passwordDigits = 6,
     @required this.passwordEnteredCallback,
+    this.tapFeedbackEnabled = true,
     this.cancelButton,
     this.deleteButton,
     this.backspaceButton,
@@ -238,6 +241,9 @@ class _PasscodeScreenState extends State<PasscodeScreen> with SingleTickerProvid
   }
 
   _onKeyboardButtonPressed(String text) {
+    if (widget.tapFeedbackEnabled == true) {
+      SystemSound.play(SystemSoundType.click);
+    }
     setState(() {
       if (enteredPasscode.length < widget.passwordDigits) {
         enteredPasscode += text;
