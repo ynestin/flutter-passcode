@@ -7,8 +7,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:passcode_screen/circle.dart';
 import 'package:passcode_screen/keyboard.dart';
-import 'package:passcode_screen/shake_curve.dart';
 import 'package:passcode_screen/animation.dart';
+import 'package:passcode_screen/widgets/invalid_input_animated_widget.dart';
+import 'package:flutter_vibrate/flutter_vibrate.dart';
 
 typedef PasswordEnteredCallback = void Function(String text);
 typedef IsValidCallback = void Function();
@@ -65,36 +66,35 @@ class PasscodeScreen extends StatefulWidget {
   State<StatefulWidget> createState() => _PasscodeScreenState();
 }
 
-class _PasscodeScreenState extends State<PasscodeScreen> with SingleTickerProviderStateMixin {
+class _PasscodeScreenState extends State<PasscodeScreen>
+    with SingleTickerProviderStateMixin {
   StreamSubscription<bool> streamSubscription;
   String enteredPasscode = '';
-  AnimationController controller;
-  Animation<dynamic> animation;
+
+  bool _shouldShowAnimation = false;
 
   @override
   initState() {
     super.initState();
-    streamSubscription = widget.shouldTriggerVerification.listen((isValid) => _showValidation(isValid));
-    _initInvalidPasscodeAnimation();
+    streamSubscription = widget.shouldTriggerVerification
+        .listen((isValid) => _showValidation(isValid));
   }
 
-  _initInvalidPasscodeAnimation() {
-    controller = AnimationController(duration: widget.animationUIConfig.duration, vsync: this);
-    final Animation curve = CurvedAnimation(parent: controller, curve: widget.animationUIConfig.curve ?? ShakeCurve());
-    animation = (widget.animationUIConfig.animation ?? Tween(begin: 0.0, end: 10.0)).animate(curve)
-      ..addStatusListener((status) {
-        if (status == AnimationStatus.completed) {
-          setState(() {
-            enteredPasscode = '';
-            controller.value = 0;
-          });
-        }
-      })
-      ..addListener(() {
-        setState(() {
-          // the animation object’s value is the changed state
-        });
-      });
+  @override
+  didUpdateWidget(PasscodeScreen old) {
+    super.didUpdateWidget(old);
+    // in case the stream instance changed, subscribe to the new one
+    if (widget.shouldTriggerVerification != old.shouldTriggerVerification) {
+      streamSubscription.cancel();
+      streamSubscription = widget.shouldTriggerVerification
+          .listen((isValid) => _showValidation(isValid));
+    }
+  }
+
+  @override
+  dispose() {
+    streamSubscription.cancel();
+    super.dispose();
   }
 
   @override
@@ -124,23 +124,35 @@ class _PasscodeScreenState extends State<PasscodeScreen> with SingleTickerProvid
                   Container(
                     margin: const EdgeInsets.only(top: 20),
                     height: 40,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: _buildCircles(),
-                    ),
+                    child: _shouldShowAnimation == true
+                        ? InvalidInputAnimatedWidget(
+                            config: widget.animationUIConfig,
+                            onAnimationEnded: _onAnimationEnded,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: _buildCircles(),
+                            ),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: _buildCircles(),
+                          ),
                   ),
                   _buildKeyboard(),
-                  widget.bottomWidget != null ? widget.bottomWidget : Container()
+                  widget.bottomWidget != null
+                      ? widget.bottomWidget
+                      : Container()
                 ],
               ),
             ),
           ),
-          if (widget.cancelButton != null && widget.deleteButton != null) Positioned(
-            child: Align(
-              alignment: Alignment.bottomRight,
-              child: _buildDeleteButton(),
+          if (widget.cancelButton != null && widget.deleteButton != null)
+            Positioned(
+              child: Align(
+                alignment: Alignment.bottomRight,
+                child: _buildDeleteButton(),
+              ),
             ),
-          ),
         ],
       );
 
@@ -177,7 +189,9 @@ class _PasscodeScreenState extends State<PasscodeScreen> with SingleTickerProvid
                         ),
                         widget.bottomWidget != null
                             ? Positioned(
-                                child: Align(alignment: Alignment.topCenter, child: widget.bottomWidget),
+                                child: Align(
+                                    alignment: Alignment.topCenter,
+                                    child: widget.bottomWidget),
                               )
                             : Container()
                       ],
@@ -188,12 +202,13 @@ class _PasscodeScreenState extends State<PasscodeScreen> with SingleTickerProvid
               ),
             ),
           ),
-          if (widget.cancelButton != null && widget.deleteButton != null) Positioned(
-            child: Align(
-              alignment: Alignment.bottomRight,
-              child: _buildDeleteButton(),
-            ),
-          )
+          if (widget.cancelButton != null && widget.deleteButton != null)
+            Positioned(
+              child: Align(
+                alignment: Alignment.bottomRight,
+                child: _buildDeleteButton(),
+              ),
+            )
         ],
       );
 
@@ -202,15 +217,18 @@ class _PasscodeScreenState extends State<PasscodeScreen> with SingleTickerProvid
           onKeyboardTap: _onKeyboardButtonPressed,
           keyboardUIConfig: widget.keyboardUIConfig,
           digits: widget.digits,
-          backspaceButton: widget.backspaceButton != null ? _buildBackspaceButton() : Container(),
-          biometricButton: widget.biometricButton != null ? _buildBiometricButton() : Container(),
+          backspaceButton: widget.backspaceButton != null
+              ? _buildBackspaceButton()
+              : Container(),
+          biometricButton: widget.biometricButton != null
+              ? _buildBiometricButton()
+              : Container(),
         ),
       );
 
   List<Widget> _buildCircles() {
     var list = <Widget>[];
     var config = widget.circleUIConfig;
-    var extraSize = animation.value;
     for (int i = 0; i < widget.passwordDigits; i++) {
       list.add(
         Container(
@@ -218,7 +236,6 @@ class _PasscodeScreenState extends State<PasscodeScreen> with SingleTickerProvid
           child: Circle(
             filled: i < enteredPasscode.length,
             circleUIConfig: config,
-            extraSize: extraSize,
           ),
         ),
       );
@@ -229,7 +246,8 @@ class _PasscodeScreenState extends State<PasscodeScreen> with SingleTickerProvid
   _onDeleteButtonPressed() {
     if (enteredPasscode.length > 0) {
       setState(() {
-        enteredPasscode = enteredPasscode.substring(0, enteredPasscode.length - 1);
+        enteredPasscode =
+            enteredPasscode.substring(0, enteredPasscode.length - 1);
       });
     }
   }
@@ -254,28 +272,14 @@ class _PasscodeScreenState extends State<PasscodeScreen> with SingleTickerProvid
     });
   }
 
-  @override
-  didUpdateWidget(PasscodeScreen old) {
-    super.didUpdateWidget(old);
-    // in case the stream instance changed, subscribe to the new one
-    if (widget.shouldTriggerVerification != old.shouldTriggerVerification) {
-      streamSubscription.cancel();
-      streamSubscription = widget.shouldTriggerVerification.listen((isValid) => _showValidation(isValid));
-    }
-  }
-
-  @override
-  dispose() {
-    controller.dispose();
-    streamSubscription.cancel();
-    super.dispose();
-  }
-
   _showValidation(bool isValid) {
     if (isValid) {
       Navigator.maybePop(context).then((pop) => _validationCallback());
     } else {
-      controller.forward();
+      Vibrate.feedback(FeedbackType.error);
+      setState(() {
+        _shouldShowAnimation = true;
+      });
     }
   }
 
@@ -283,17 +287,29 @@ class _PasscodeScreenState extends State<PasscodeScreen> with SingleTickerProvid
     if (widget.isValidCallback != null) {
       widget.isValidCallback();
     } else {
-      print("You didn't implement validation callback. Please handle a state by yourself then.");
+      print(
+          "You didn't implement validation callback. Please handle a state by yourself then.");
     }
+  }
+
+  void _onAnimationEnded() {
+    setState(() {
+      enteredPasscode = '';
+      _shouldShowAnimation = false;
+    });
   }
 
   Widget _buildDeleteButton() {
     return Container(
       child: CupertinoButton(
-        onPressed: enteredPasscode.length == 0 ? _onCancelButtonPressed : _onDeleteButtonPressed,
+        onPressed: enteredPasscode.length == 0
+            ? _onCancelButtonPressed
+            : _onDeleteButtonPressed,
         child: Container(
           margin: widget.keyboardUIConfig.digitInnerMargin,
-          child: enteredPasscode.length == 0 ? widget.cancelButton : widget.deleteButton,
+          child: enteredPasscode.length == 0
+              ? widget.cancelButton
+              : widget.deleteButton,
         ),
       ),
     );
@@ -303,9 +319,7 @@ class _PasscodeScreenState extends State<PasscodeScreen> with SingleTickerProvid
     return Container(
       child: CupertinoButton(
         onPressed: _onDeleteButtonPressed,
-        child: Container(
-          child: widget.backspaceButton
-        ),
+        child: Container(child: widget.backspaceButton),
       ),
     );
   }

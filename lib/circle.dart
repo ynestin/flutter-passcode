@@ -19,18 +19,17 @@ class CircleUIConfig {
 class Circle extends StatelessWidget {
   final bool filled;
   final CircleUIConfig circleUIConfig;
-  double extraSize = 0;
 
   Color get _circleBorderColor => circleUIConfig.noBorderOnFill && filled
       ? Colors.transparent
       : circleUIConfig.borderColor;
 
-  Circle({Key key, this.filled = false, @required this.circleUIConfig, this.extraSize = 0}) : super(key: key);
+  Circle({Key key, this.filled = false, @required this.circleUIConfig})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.only(bottom: extraSize),
       width: circleUIConfig.circleSize,
       height: circleUIConfig.circleSize,
       decoration: BoxDecoration(
